@@ -1,24 +1,34 @@
 """
-Django settings for Smart Plant Watering System backend.
+Django settings for Smart Plant Watering System backend - Production Ready
 """
 
 from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-your-secret-key-change-this-in-production'
+# ========== SECURITY SETTINGS ==========
+# SECURITY: Get SECRET_KEY from environment
+SECRET_KEY = os.getenv(
+    'SECRET_KEY', 
+    'django-insecure-development-key-change-in-production'
+)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG: Get from environment, default to False in production
+DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 'yes']
 
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS: Get from environment or use defaults
+ALLOWED_HOSTS = os.getenv(
+    'ALLOWED_HOSTS', 
+    'localhost,127.0.0.1'
+).split(',')
+
+print(f"[DJANGO] DEBUG={DEBUG}, ALLOWED_HOSTS={ALLOWED_HOSTS}")
 
 # Application definition
 INSTALLED_APPS = [
@@ -36,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -65,13 +76,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# ========== DATABASE CONFIGURATION ==========
+# Support both development (SQLite) and production (PostgreSQL)
+if os.getenv('DATABASE_URL'):
+    # Production: Use PostgreSQL via DATABASE_URL
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+    print("[DJANGO] Using PostgreSQL from DATABASE_URL")
+else:
+    # Development: Use SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+    print("[DJANGO] Using SQLite (development database)")
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -98,27 +124,16 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Static files
+# ========== STATIC & MEDIA FILES ==========
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS Configuration - Allow both web and mobile apps
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
-    "exp://localhost:8081",
-    "http://10.0.2.2:8000",  # MEmu Android emulator
-    "http://10.0.2.2:19000",  # Expo dev server on MEmu
-    "http://10.0.2.2:19001",  # Expo dev server on MEmu
-]
-
-# Allow all origins in development (only for Django CORS)
-CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all for testing
-
-# REST Framework Configuration
+# ========== REST FRAMEWORK CONFIGURATION ==========
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -126,4 +141,87 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
+
+# ========== CORS CONFIGURATION ==========
+CORS_ALLOWED_ORIGINS = [
+    origin.strip() for origin in os.getenv(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:3000,http://127.0.0.1:3000'
+    ).split(',')
+]
+CORS_ALLOW_CREDENTIALS = True
+
+print(f"[DJANGO] CORS_ALLOWED_ORIGINS={CORS_ALLOWED_ORIGINS}")
+
+# ========== SECURITY SETTINGS (Production) ==========
+if not DEBUG:
+    # HTTPS & Security Headers
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Security Headers
+    SECURE_CONTENT_SECURITY_POLICY = {
+        'default-src': ("'self'",),
+        'script-src': ("'self'", "'unsafe-inline'"),
+        'style-src': ("'self'", "'unsafe-inline'"),
+    }
+
+# ========== LOGGING CONFIGURATION ==========
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} - {message}',
+            'style': '{',
+            'datefmt': '%d/%b/%Y %H:%M:%S',
+        },
+        'simple': {
+            'format': '[{levelname}] {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'plants_api': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+
+# Create logs directory if it doesn't exist
+import os as _os
+_logs_dir = BASE_DIR / 'logs'
+_logs_dir.mkdir(exist_ok=True)

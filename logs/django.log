@@ -1,0 +1,12 @@
+[ERROR] 07/Apr/2026 10:26:20 exception - Invalid HTTP_HOST header: '192.168.1.10:8000'. You may need to add '192.168.1.10' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "E:\Smart Plant Watering System\django-backend\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "E:\Smart Plant Watering System\django-backend\venv\Lib\site-packages\django\utils\deprecation.py", line 133, in __call__
+    response = self.process_request(request)
+  File "E:\Smart Plant Watering System\django-backend\venv\Lib\site-packages\django\middleware\security.py", line 28, in process_request
+    host = self.redirect_host or request.get_host()
+                                 ~~~~~~~~~~~~~~~~^^
+  File "E:\Smart Plant Watering System\django-backend\venv\Lib\site-packages\django\http\request.py", line 167, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: '192.168.1.10:8000'. You may need to add '192.168.1.10' to ALLOWED_HOSTS.
