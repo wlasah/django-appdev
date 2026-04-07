@@ -25,7 +25,7 @@ DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 'yes']
 # ALLOWED_HOSTS: Get from environment or use defaults
 ALLOWED_HOSTS = os.getenv(
     'ALLOWED_HOSTS', 
-    'localhost,127.0.0.1'
+    'localhost,127.0.0.1,*.onrender.com'
 ).split(',')
 
 print(f"[DJANGO] DEBUG={DEBUG}, ALLOWED_HOSTS={ALLOWED_HOSTS}")
