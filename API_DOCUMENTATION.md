@@ -1,7 +1,11 @@
 # Smart Plant Watering System - API Documentation
 
-## Base URL
-`http://localhost:8000/api/`
+## Base URLs
+- **Local Development:** `http://localhost:8000/api/`
+- **Production (Render):** `https://smart-plant-backend-39w7.onrender.com/api/`
+
+## Status
+✅ **Backend fully implemented and deployed** - Django REST Framework with PostgreSQL database, authentication, and complete plant management system.
 
 ## Authentication
 All endpoints (except registration and login) require a token in the Authorization header:
