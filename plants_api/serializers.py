@@ -89,6 +89,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password_confirm = serializers.CharField(write_only=True, min_length=6)
     first_name = serializers.CharField(required=False, allow_blank=True)
     last_name = serializers.CharField(required=False, allow_blank=True)
+    # Override username field to allow spaces
+    username = serializers.CharField(max_length=150, min_length=1)
 
     class Meta:
         model = User
@@ -98,7 +100,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({"password": "Passwords don't match"})
         
-        # Dont convert spaces - we'll store them in first_name
+        # Don't convert spaces - we'll store them in first_name
         username_display = data.get('username', '').strip()
         if not username_display:
             raise serializers.ValidationError({"username": "Username cannot be empty"})
