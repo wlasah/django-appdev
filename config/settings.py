@@ -149,7 +149,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     origin.strip() for origin in os.getenv(
         'CORS_ALLOWED_ORIGINS',
-        'http://localhost:3000,http://127.0.0.1:3000,http://192.168.1.10:3000'
+        'http://localhost:3000,http://127.0.0.1:3000,http://192.168.1.10:3000,http://192.168.1.10:59916,http://192.168.1.10:5000'
     ).split(',')
 ]
 CORS_ALLOW_CREDENTIALS = True
