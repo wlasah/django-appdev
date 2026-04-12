@@ -77,17 +77,27 @@ class UserViewSet(viewsets.ModelViewSet):
         """Login user and return token with user data"""
         from django.contrib.auth import authenticate
         
-        username = request.data.get('username')
+        username_display = request.data.get('username', '').strip()
         password = request.data.get('password')
         
-        if not username or not password:
+        if not username_display or not password:
             return Response(
                 {'error': 'username and password required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        user = authenticate(username=username, password=password)
+        # Try to find user by display name (first_name field)
+        # first_name stores the actual username with spaces
+        user = User.objects.filter(first_name=username_display).first()
+        
         if not user:
+            # If not found by display name, try with underscores instead of spaces
+            # (for backward compatibility if username was stored without spaces)
+            username_alt = username_display.replace(' ', '_')
+            user = User.objects.filter(username=username_alt).first()
+        
+        # Verify password
+        if not user or not user.check_password(password):
             return Response(
                 {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -96,7 +106,7 @@ class UserViewSet(viewsets.ModelViewSet):
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'id': user.id,
-            'username': user.username,
+            'username': user.first_name or user.username,  # Return display name (with spaces)
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,

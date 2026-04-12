@@ -72,6 +72,13 @@ class PlantCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    # Return display name (with spaces) instead of internal username
+    username = serializers.SerializerMethodField()
+    
+    def get_username(self, obj):
+        # Return first_name if it has the display username, otherwise return username
+        return obj.first_name if obj.first_name else obj.username
+    
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff']
@@ -90,12 +97,41 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({"password": "Passwords don't match"})
+        
+        # Dont convert spaces - we'll store them in first_name
+        username_display = data.get('username', '').strip()
+        if not username_display:
+            raise serializers.ValidationError({"username": "Username cannot be empty"})
+        
+        # Check if username already exists (check against first_name which stores the display name)
+        if User.objects.filter(first_name=username_display).exists():
+            raise serializers.ValidationError({"username": "This username is already taken"})
+        
         return data
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
-        user = User.objects.create_user(**validated_data)
+        username_display = validated_data.pop('username', '').strip()
+        
+        # Convert spaces to underscores for the Django username field (database requirement)
+        # Django username can only be 150 chars, alphanumeric + underscore/hyphen
+        django_username = username_display.replace(' ', '_')
+        
+        # Ensure uniqueness of the django username
+        counter = 1
+        original_django_username = django_username
+        while User.objects.filter(username=django_username).exists():
+            django_username = f"{original_django_username}_{counter}"
+            counter += 1
+        
+        # Store the display name (with spaces) in first_name
+        # The username field stores the internal django username
+        user = User.objects.create_user(
+            username=django_username,
+            first_name=username_display,  # Store the original name with spaces for display
+            **validated_data
+        )
         user.set_password(password)
         user.save()
         return user
