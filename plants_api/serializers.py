@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Plant, WateringHistory, CareRequirements, SystemSettings, PlantType, Location, WateringSchedule, AutomationRule
+from .models import Plant, WateringHistory, CareRequirements, SystemSettings, PlantType, Location, WateringSchedule, AutomationRule, AdminActionLog
 
 
 class CareRequirementsSerializer(serializers.ModelSerializer):
@@ -186,3 +186,14 @@ class AutomationRuleSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'trigger', 'trigger_value', 'action', 'is_active',
                   'created_by', 'created_by_username', 'notes', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+
+
+class AdminActionLogSerializer(serializers.ModelSerializer):
+    admin_username = serializers.CharField(source='admin_user.username', read_only=True)
+    action_display = serializers.CharField(source='get_action_type_display', read_only=True)
+    
+    class Meta:
+        model = AdminActionLog
+        fields = ['id', 'action_type', 'action_display', 'admin_user', 'admin_username',
+                  'target_user_id', 'target_username', 'target_user_email', 'details', 'timestamp']
+        read_only_fields = ['id', 'admin_user', 'timestamp']

@@ -5,13 +5,13 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.utils import timezone
-from .models import Plant, WateringHistory, CareRequirements, SystemSettings, PlantType, Location, WateringSchedule, AutomationRule
+from .models import Plant, WateringHistory, CareRequirements, SystemSettings, PlantType, Location, WateringSchedule, AutomationRule, AdminActionLog
 from .serializers import (
     PlantSerializer, PlantCreateUpdateSerializer, 
     UserSerializer, UserRegistrationSerializer, 
     WateringHistorySerializer,
     SystemSettingsSerializer, PlantTypeSerializer, LocationSerializer,
-    WateringScheduleSerializer, AutomationRuleSerializer
+    WateringScheduleSerializer, AutomationRuleSerializer, AdminActionLogSerializer
 )
 
 
@@ -274,6 +274,73 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': 'User not found'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def log_action(self, request):
+        """Log an admin action (admin only)"""
+        if not is_admin(request.user):
+            return Response(
+                {'error': 'Admin access required'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        action_type = request.data.get('action_type')
+        target_user_id = request.data.get('target_user_id')
+        target_username = request.data.get('target_username')
+        details = request.data.get('details', {})
+        
+        if not action_type or not target_user_id or not target_username:
+            return Response(
+                {'error': 'action_type, target_user_id, and target_username required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            target_user = User.objects.get(id=target_user_id)
+            
+            from .models import AdminActionLog
+            action_log = AdminActionLog.objects.create(
+                action_type=action_type,
+                admin_user=request.user,
+                target_user_id=target_user_id,
+                target_username=target_username,
+                target_user_email=target_user.email,
+                details=details
+            )
+            
+            serializer = AdminActionLogSerializer(action_log)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Target user not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def get_user_actions(self, request):
+        """Get admin actions for a specific user"""
+        target_user_id = request.query_params.get('target_user_id')
+        limit = int(request.query_params.get('limit', 50))
+        
+        if not target_user_id:
+            return Response(
+                {'error': 'target_user_id query parameter required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from .models import AdminActionLog
+            actions = AdminActionLog.objects.filter(
+                target_user_id=target_user_id
+            ).order_by('-timestamp')[:limit]
+            
+            serializer = AdminActionLogSerializer(actions, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
 

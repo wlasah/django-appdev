@@ -165,3 +165,32 @@ class AutomationRule(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class AdminActionLog(models.Model):
+    """Model for logging admin management actions"""
+    ACTION_CHOICES = [
+        ('create_user', 'Create User'),
+        ('update_user', 'Update User'),
+        ('delete_user', 'Delete User'),
+        ('reset_password', 'Reset Password'),
+        ('change_role', 'Change Role'),
+    ]
+    
+    action_type = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    admin_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='admin_actions_performed')
+    target_user_id = models.IntegerField()
+    target_username = models.CharField(max_length=150)
+    target_user_email = models.CharField(max_length=254, blank=True, null=True)
+    details = models.JSONField(default=dict, blank=True)  # Store extra details like old/new values
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['target_user_id', '-timestamp']),
+            models.Index(fields=['admin_user', '-timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.admin_user.username} - {self.action_type} on {self.target_username}"
