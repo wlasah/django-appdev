@@ -22,12 +22,13 @@ class PlantSerializer(serializers.ModelSerializer):
     care_requirements = CareRequirementsSerializer(read_only=True)
     watering_history = WateringHistorySerializer(many=True, read_only=True)
     owner_username = serializers.CharField(source='owner.username', read_only=True)
+    owner_id = serializers.IntegerField(source='owner.id', read_only=True)
 
     class Meta:
         model = Plant
         fields = ['id', 'name', 'type', 'location', 'moisture', 'last_watered', 
-                  'description', 'care_requirements', 'watering_history', 'created_at', 'owner_username']
-        read_only_fields = ['id', 'created_at', 'owner_username']
+                  'description', 'care_requirements', 'watering_history', 'created_at', 'owner_username', 'owner_id']
+        read_only_fields = ['id', 'created_at', 'owner_username', 'owner_id']
 
 
 class PlantCreateUpdateSerializer(serializers.ModelSerializer):
